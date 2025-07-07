@@ -10,11 +10,21 @@ const CheckoutStep2 = ({
   setCheckoutData,
 }) => {
   const { address, card, products, total } = checkoutData;
-  const userId = "6865bca5c6e74d38eae10c45";
+  //const userId = "6865bca5c6e74d38eae10c45";
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  const userId = storedUser?._id;
 
   const handleConfirm = async () => {
     try {
-      if (!address || !address.full_address || !card || !card.card_id) {
+      //alert("🧾 Dirección:\n" + JSON.stringify(address, null, 2));
+      //alert("📇 Tarjeta:\n" + JSON.stringify(card, null, 2));
+      if (
+        !address ||
+        !address.full_address ||
+        !address.address_id ||
+        !card ||
+        !card.card_id
+      ) {
         alert("Faltan datos de dirección o tarjeta.");
         return;
       }
@@ -41,7 +51,7 @@ const CheckoutStep2 = ({
           $numberDecimal: parseFloat(total).toFixed(2),
         },
         shipping_address: {
-          address_id: address._id,
+          address_id: address._id || address.address_id,
           full_address: address.full_address,
         },
         payment_summary: {
@@ -55,26 +65,19 @@ const CheckoutStep2 = ({
         created_at: new Date().toISOString(),
       };
 
-      console.log("🚀 Orden a enviar:", JSON.stringify(payload, null, 2));
-
-      // 1. Crear orden en backend
       const createdOrder = await checkoutService.createOrder(payload);
 
-      // 2. Remover productos comprados del carrito
       const productIds = products.map((p) => p.product_id);
       await cartService.removeProductsFromCart(userId, productIds);
 
-      // 3. Limpiar localStorage temporal
       localStorage.removeItem("checkoutProducts");
 
-      // 4. Actualizar estado global
       setCheckoutData((prev) => ({
         ...prev,
         orderId: createdOrder._id,
         createdAt: createdOrder.created_at,
       }));
 
-      // 5. Avanzar a Confirmación
       nextStep();
     } catch (error) {
       console.error(
